@@ -2,9 +2,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Refit;
 using System.Reflection;
 using System.Text;
@@ -14,27 +11,22 @@ using OrderService.Mappings;
 using OrderService.Services;
 using OrderService.Workflows;
 using OrderService.Workflows.Activities;
-using OpenTelemetry.Instrumentation.EntityFrameworkCore;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Dapr.Workflow;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Note: AddControllers is called later with AddDapr
-//builder.Services.AddControllers();
+// Add ServiceDefaults (includes OpenTelemetry, health checks, service discovery)
+builder.AddServiceDefaults();
 
-// Add Entity Framework with InMemory database
-builder.Services.AddDbContext<OrderDbContext>(options =>
-	options.UseInMemoryDatabase("OrderServiceDb"));
+// Add Entity Framework with SQL Server (Aspire will configure connection)
+builder.AddSqlServerDbContext<OrderDbContext>("OrderDb");
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(OrderMappingProfile));
 
 // Add Dapr
-builder.Services.AddDaprClient(daprClientBuilder =>
-{
-	daprClientBuilder.UseHttpEndpoint("http://localhost:3502");
-});
+builder.Services.AddControllers().AddDapr();
 
 // Add Dapr Workflow
 builder.Services.AddDaprWorkflow(options =>
@@ -49,10 +41,10 @@ builder.Services.AddDaprWorkflow(options =>
 	options.RegisterActivity<ProcessShippingActivity>();
 });
 
-// Add Redis and HybridCache
+// Add Redis and HybridCache (Aspire will configure connection)
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-	options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+	options.Configuration = builder.Configuration.GetConnectionString("redis") ?? "localhost:6379";
 });
 
 builder.Services.AddHybridCache(options =>
@@ -64,12 +56,12 @@ builder.Services.AddHybridCache(options =>
 	};
 });
 
-// Add Refit clients for external services
+// Add Refit clients for external services (using service discovery)
 builder.Services.AddRefitClient<IUserServiceClient>()
-	.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://localhost:8080"));
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://userservice"));
 
 builder.Services.AddRefitClient<IProductServiceClient>()
-	.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://localhost:8081"));
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://productservice"));
 
 // Add JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your-secret-key-here-must-be-at-least-32-characters-long";
@@ -87,25 +79,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 			ClockSkew = TimeSpan.Zero
 		};
 	});
-
-// Add OpenTelemetry
-builder.Services.AddOpenTelemetry()
-	.ConfigureResource(resource => resource
-		.AddService("OrderService")
-		.AddAttributes(new Dictionary<string, object>
-		{
-			["service.instance.id"] = Environment.MachineName,
-			["service.version"] = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0"
-		}))
-	.WithTracing(tracing => tracing
-		.AddAspNetCoreInstrumentation()
-		.AddHttpClientInstrumentation()
-		.AddEntityFrameworkCoreInstrumentation()
-		.AddSource("OrderService"))
-	.WithMetrics(metrics => metrics
-		.AddAspNetCoreInstrumentation()
-		.AddHttpClientInstrumentation()
-		.AddPrometheusExporter());
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -155,11 +128,10 @@ builder.Services.AddSwaggerGen(c =>
 // Add Application Services
 builder.Services.AddScoped<IOrderService, OrderServiceImpl>();
 
-// Add Health Checks
-builder.Services.AddHealthChecks()
-	.AddDbContextCheck<OrderDbContext>();
-
 var app = builder.Build();
+
+// Map default endpoints (health checks, etc.)
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -186,11 +158,7 @@ app.UseAuthorization();
 app.UseCloudEvents();
 app.MapSubscribeHandler();
 
-// Add Prometheus metrics endpoint
-app.UseOpenTelemetryPrometheusScrapingEndpoint();
-
 app.MapControllers();
-app.MapHealthChecks("/health");
 
 // Add endpoint to display service info in development
 if (app.Environment.IsDevelopment())

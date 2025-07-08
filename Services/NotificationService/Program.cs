@@ -2,30 +2,27 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using System.Reflection;
 using System.Text;
 using NotificationService.Data;
 using NotificationService.Services;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add ServiceDefaults (includes OpenTelemetry, health checks, service discovery)
+builder.AddServiceDefaults();
+
 // Add services to the container.
-builder.Services.AddControllers().AddDapr(daprClientBuilder =>
-{
-	daprClientBuilder.UseHttpEndpoint("http://localhost:3503");
-});
+builder.Services.AddControllers().AddDapr();
 
-// Add Entity Framework with InMemory database
-builder.Services.AddDbContext<NotificationDbContext>(options =>
-	options.UseInMemoryDatabase("NotificationServiceDb"));
+// Add Entity Framework with SQL Server (Aspire will configure connection)
+builder.AddSqlServerDbContext<NotificationDbContext>("NotificationDb");
 
-// Add Redis and HybridCache
+// Add Redis and HybridCache (Connection will be configured by Aspire)
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-	options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+	options.Configuration = builder.Configuration.GetConnectionString("redis") ?? "localhost:6379";
 });
 
 builder.Services.AddHybridCache(options =>
@@ -53,25 +50,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 			ClockSkew = TimeSpan.Zero
 		};
 	});
-
-// Add OpenTelemetry
-builder.Services.AddOpenTelemetry()
-	.ConfigureResource(resource => resource
-		.AddService("NotificationService")
-		.AddAttributes(new Dictionary<string, object>
-		{
-			["service.instance.id"] = Environment.MachineName,
-			["service.version"] = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0"
-		}))
-	.WithTracing(tracing => tracing
-		.AddAspNetCoreInstrumentation()
-		.AddHttpClientInstrumentation()
-		.AddEntityFrameworkCoreInstrumentation()
-		.AddSource("NotificationService"))
-	.WithMetrics(metrics => metrics
-		.AddAspNetCoreInstrumentation()
-		.AddHttpClientInstrumentation()
-		.AddPrometheusExporter());
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -125,11 +103,10 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 // Add Background Services
 builder.Services.AddHostedService<NotificationProcessorService>();
 
-// Add Health Checks
-builder.Services.AddHealthChecks()
-	.AddDbContextCheck<NotificationDbContext>();
-
 var app = builder.Build();
+
+// Map default endpoints (health checks, etc.)
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -156,11 +133,7 @@ app.UseAuthorization();
 app.UseCloudEvents();
 app.MapSubscribeHandler();
 
-// Add Prometheus metrics endpoint
-app.UseOpenTelemetryPrometheusScrapingEndpoint();
-
 app.MapControllers();
-app.MapHealthChecks("/health");
 
 // Add endpoint to display service info
 if (app.Environment.IsDevelopment())

@@ -56,9 +56,8 @@ public class OrderDbContext : DbContext
 				.IsRequired()
 				.HasPrecision(18, 2);
 
-			entity.Property(e => e.TotalPrice)
-				.IsRequired()
-				.HasPrecision(18, 2);
+			// TotalPrice is a computed property, not stored in database
+			entity.Ignore(e => e.TotalPrice);
 		});
 	}
 }

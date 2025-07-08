@@ -2,40 +2,32 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using System.Reflection;
 using System.Text;
 using ProductService.Data;
 using ProductService.Services;
 using ProductService.Mappings;
-using OpenTelemetry.Instrumentation.EntityFrameworkCore;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Grpc.AspNetCore.Web;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers();
+// Add ServiceDefaults (includes OpenTelemetry, health checks, service discovery)
+builder.AddServiceDefaults();
 
-// Add Entity Framework with InMemory database
-builder.Services.AddDbContext<ProductDbContext>(options =>
-	options.UseInMemoryDatabase("ProductServiceDb"));
+// Add services to the container.
+builder.Services.AddControllers().AddDapr();
+
+// Add Entity Framework with SQL Server (Aspire will configure connection)
+builder.AddSqlServerDbContext<ProductDbContext>("ProductDb");
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(ProductMappingProfile));
 
-// Add Dapr
-builder.Services.AddDaprClient(daprClientBuilder =>
-{
-	daprClientBuilder.UseHttpEndpoint("http://localhost:3501");
-});
-
-// Add Redis and HybridCache
+// Add Redis and HybridCache (Connection will be configured by Aspire)
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-	options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+	options.Configuration = builder.Configuration.GetConnectionString("redis") ?? "localhost:6379";
 });
 
 builder.Services.AddHybridCache(options =>
@@ -66,25 +58,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 // Add gRPC
 builder.Services.AddGrpc();
-
-// Add OpenTelemetry
-builder.Services.AddOpenTelemetry()
-	.ConfigureResource(resource => resource
-		.AddService("ProductService")
-		.AddAttributes(new Dictionary<string, object>
-		{
-			["service.instance.id"] = Environment.MachineName,
-			["service.version"] = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0"
-		}))
-	.WithTracing(tracing => tracing
-		.AddAspNetCoreInstrumentation()
-		.AddHttpClientInstrumentation()
-		.AddEntityFrameworkCoreInstrumentation()
-		.AddSource("ProductService"))
-	.WithMetrics(metrics => metrics
-		.AddAspNetCoreInstrumentation()
-		.AddHttpClientInstrumentation()
-		.AddPrometheusExporter());
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -134,11 +107,10 @@ builder.Services.AddSwaggerGen(c =>
 // Add Application Services
 builder.Services.AddScoped<IProductService, ProductServiceImpl>();
 
-// Add Health Checks
-builder.Services.AddHealthChecks()
-	.AddDbContextCheck<ProductDbContext>();
-
 var app = builder.Build();
+
+// Map default endpoints (health checks, etc.)
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -165,9 +137,6 @@ app.UseAuthorization();
 app.UseCloudEvents();
 app.MapSubscribeHandler();
 
-// Add Prometheus metrics endpoint
-app.UseOpenTelemetryPrometheusScrapingEndpoint();
-
 // Map gRPC services
 app.MapGrpcService<ProductGrpcServiceImpl>();
 
@@ -175,7 +144,6 @@ app.MapGrpcService<ProductGrpcServiceImpl>();
 app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 
 app.MapControllers();
-app.MapHealthChecks("/health");
 
 // Add endpoint to display gRPC services in development
 if (app.Environment.IsDevelopment())
