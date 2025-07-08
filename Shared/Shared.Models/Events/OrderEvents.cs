@@ -41,3 +41,20 @@ public class ProductStockUpdatedEvent
 	public int NewStock { get; set; }
 	public DateTime UpdatedAt { get; set; }
 }
+public class OrderCancelledEvent
+{
+	public int OrderId { get; set; }
+	public string OrderNumber { get; set; } = string.Empty;
+	public int UserId { get; set; }
+	public string Reason { get; set; } = string.Empty;
+	public DateTime CancelledAt { get; set; }
+}
+
+public class OrderStatusUpdatedEvent
+{
+	public int OrderId { get; set; }
+	public string OrderNumber { get; set; } = string.Empty;
+	public OrderStatus OldStatus { get; set; }
+	public OrderStatus NewStatus { get; set; }
+	public DateTime UpdatedAt { get; set; }
+}
