@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+option csharp_namespace = "ProductService.Protos";
+
+package product;
+
+service ProductGrpcService {
+  rpc GetProduct (GetProductRequest) returns (ProductResponse);
+  rpc GetProducts (GetProductsRequest) returns (GetProductsResponse);
+  rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
+  rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
+  rpc DeleteProduct (DeleteProductRequest) returns (DeleteProductResponse);
+  rpc CheckStock (CheckStockRequest) returns (CheckStockResponse);
+  rpc UpdateStock (UpdateStockRequest) returns (UpdateStockResponse);
+}
+
+message GetProductRequest {
+  int32 id = 1;
+}
+
+message GetProductsRequest {
+  string name = 1;
+  string category = 2;
+  double min_price = 3;
+  double max_price = 4;
+  bool in_stock = 5;
+  int32 page = 6;
+  int32 page_size = 7;
+}
+
+message CreateProductRequest {
+  string name = 1;
+  string description = 2;
+  double price = 3;
+  int32 stock = 4;
+  string category = 5;
+  string image_url = 6;
+}
+
+message UpdateProductRequest {
+  int32 id = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  int32 stock = 5;
+  string category = 6;
+  string image_url = 7;
+}
+
+message DeleteProductRequest {
+  int32 id = 1;
+}
+
+message CheckStockRequest {
+  int32 product_id = 1;
+  int32 required_quantity = 2;
+}
+
+message UpdateStockRequest {
+  int32 product_id = 1;
+  int32 quantity_change = 2;
+}
+
+message ProductResponse {
+  int32 id = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  int32 stock = 5;
+  string category = 6;
+  string image_url = 7;
+  string created_at = 8;
+  string updated_at = 9;
+  bool is_active = 10;
+}
+
+message GetProductsResponse {
+  repeated ProductResponse products = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message DeleteProductResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CheckStockResponse {
+  bool available = 1;
+  int32 current_stock = 2;
+  string message = 3;
+}
+
+message UpdateStockResponse {
+  bool success = 1;
+  int32 new_stock = 2;
+  string message = 3;
+} 
