@@ -5,28 +5,42 @@ using Microsoft.OpenApi.Models;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Refit;
 using System.Reflection;
 using System.Text;
-using ProductService.Data;
-using ProductService.Services;
-using ProductService.Mappings;
+using OrderService.Clients;
+using OrderService.Data;
+using OrderService.Mappings;
+using OrderService.Services;
+using OrderService.Workflows;
+using OrderService.Workflows.Activities;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers();
+// Note: AddControllers is called later with AddDapr
+//builder.Services.AddControllers();
 
 // Add Entity Framework with InMemory database
-builder.Services.AddDbContext<ProductDbContext>(options =>
-	options.UseInMemoryDatabase("ProductServiceDb"));
+builder.Services.AddDbContext<OrderDbContext>(options =>
+	options.UseInMemoryDatabase("OrderServiceDb"));
 
 // Add AutoMapper
-builder.Services.AddAutoMapper(typeof(ProductMappingProfile));
+builder.Services.AddAutoMapper(typeof(OrderMappingProfile));
 
 // Add Dapr
 builder.Services.AddDaprClient(daprClientBuilder =>
 {
-	daprClientBuilder.UseHttpEndpoint("http://localhost:3501");
+	daprClientBuilder.UseHttpEndpoint("http://localhost:3502");
+});
+
+// Add Dapr Workflow
+builder.Services.AddDaprWorkflow(options =>
+{
+	options.RegisterWorkflow<OrderProcessingWorkflow>();
+	options.RegisterActivity<ValidateOrderActivity>();
+	options.RegisterActivity<ReserveInventoryActivity>();
+	options.RegisterActivity<ProcessPaymentActivity>();
+	options.RegisterActivity<UpdateOrderStatusActivity>();
 });
 
 // Add Redis and HybridCache
@@ -39,10 +53,17 @@ builder.Services.AddHybridCache(options =>
 {
 	options.DefaultEntryOptions = new()
 	{
-		Expiration = TimeSpan.FromMinutes(15),
-		LocalCacheExpiration = TimeSpan.FromMinutes(5)
+		Expiration = TimeSpan.FromMinutes(10),
+		LocalCacheExpiration = TimeSpan.FromMinutes(3)
 	};
 });
+
+// Add Refit clients for external services
+builder.Services.AddRefitClient<IUserServiceClient>()
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://localhost:8080"));
+
+builder.Services.AddRefitClient<IProductServiceClient>()
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://localhost:8081"));
 
 // Add JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your-secret-key-here-must-be-at-least-32-characters-long";
@@ -61,13 +82,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 		};
 	});
 
-// Add gRPC
-builder.Services.AddGrpc();
-
 // Add OpenTelemetry
 builder.Services.AddOpenTelemetry()
 	.ConfigureResource(resource => resource
-		.AddService("ProductService")
+		.AddService("OrderService")
 		.AddAttributes(new Dictionary<string, object>
 		{
 			["service.instance.id"] = Environment.MachineName,
@@ -77,8 +95,7 @@ builder.Services.AddOpenTelemetry()
 		.AddAspNetCoreInstrumentation()
 		.AddHttpClientInstrumentation()
 		.AddEntityFrameworkCoreInstrumentation()
-		.AddGrpcCoreInstrumentation()
-		.AddSource("ProductService"))
+		.AddSource("OrderService"))
 	.WithMetrics(metrics => metrics
 		.AddAspNetCoreInstrumentation()
 		.AddHttpClientInstrumentation()
@@ -90,9 +107,9 @@ builder.Services.AddSwaggerGen(c =>
 {
 	c.SwaggerDoc("v1", new OpenApiInfo
 	{
-		Title = "Product Service API",
+		Title = "Order Service API",
 		Version = "v1",
-		Description = "Microservice for product management with gRPC and HybridCache"
+		Description = "Microservice for order management with Dapr Workflows"
 	});
 
 	// Add JWT authentication to Swagger
@@ -130,11 +147,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Add Application Services
-builder.Services.AddScoped<IProductService, ProductServiceImpl>();
+builder.Services.AddScoped<IOrderService, OrderServiceImpl>();
 
 // Add Health Checks
 builder.Services.AddHealthChecks()
-	.AddDbContextCheck<ProductDbContext>();
+	.AddDbContextCheck<OrderDbContext>();
 
 var app = builder.Build();
 
@@ -144,7 +161,7 @@ if (app.Environment.IsDevelopment())
 	app.UseSwagger();
 	app.UseSwaggerUI(c =>
 	{
-		c.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Service API V1");
+		c.SwaggerEndpoint("/swagger/v1/swagger.json", "Order Service API V1");
 		c.RoutePrefix = string.Empty; // Serve Swagger UI at root
 	});
 }
@@ -152,7 +169,7 @@ if (app.Environment.IsDevelopment())
 // Initialize database
 using (var scope = app.Services.CreateScope())
 {
-	var context = scope.ServiceProvider.GetRequiredService<ProductDbContext>();
+	var context = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
 	context.Database.EnsureCreated();
 }
 
@@ -166,19 +183,13 @@ app.MapSubscribeHandler();
 // Add Prometheus metrics endpoint
 app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
-// Map gRPC services
-app.MapGrpcService<ProductGrpcServiceImpl>();
-
-// Add gRPC-Web support for browser clients
-app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
-
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-// Add endpoint to display gRPC services in development
+// Add endpoint to display service info in development
 if (app.Environment.IsDevelopment())
 {
-	app.MapGet("/", () => "Product Service - REST API available at /swagger, gRPC service available on this port");
+	app.MapGet("/", () => "Order Service - REST API available at /swagger, Dapr Workflows enabled");
 }
 
 app.Run();

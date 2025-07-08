@@ -20,7 +20,7 @@ builder.Services.AddDbContext<UserDbContext>(options =>
 	options.UseInMemoryDatabase("UserServiceDb"));
 
 // Add Dapr
-builder.Services.AddDapr(daprClientBuilder =>
+builder.Services.AddDaprClient(daprClientBuilder =>
 {
 	daprClientBuilder.UseHttpEndpoint("http://localhost:3500");
 });
