@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # Infrastructure Services
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - microservices-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./Infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - microservices-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - microservices-network
+
+  # Dapr Placement Service
+  dapr-placement:
+    image: daprio/dapr:1.13.0
+    container_name: dapr-placement
+    command: ["./placement", "-port", "50006"]
+    ports:
+      - "50006:50006"
+    networks:
+      - microservices-network
+
+  # Microservices
+  user-service:
+    build:
+      context: .
+      dockerfile: Services/UserService/Dockerfile
+    container_name: user-service
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Secret=your-secret-key-here-must-be-at-least-32-characters-long
+    depends_on:
+      - redis
+      - dapr-placement
+    networks:
+      - microservices-network
+
+  user-service-dapr:
+    image: daprio/daprd:1.13.0
+    container_name: user-service-dapr
+    command: [
+      "./daprd",
+      "-app-id", "user-service",
+      "-app-port", "8080",
+      "-dapr-http-port", "3500",
+      "-dapr-grpc-port", "50001",
+      "-placement-host-address", "dapr-placement:50006",
+      "-components-path", "/components"
+    ]
+    volumes:
+      - ./Infrastructure/dapr/components:/components
+    depends_on:
+      - user-service
+      - dapr-placement
+    network_mode: "service:user-service"
+
+  product-service:
+    build:
+      context: .
+      dockerfile: Services/ProductService/Dockerfile
+    container_name: product-service
+    ports:
+      - "8081:8081"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8081
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Secret=your-secret-key-here-must-be-at-least-32-characters-long
+    depends_on:
+      - redis
+      - dapr-placement
+    networks:
+      - microservices-network
+
+  product-service-dapr:
+    image: daprio/daprd:1.13.0
+    container_name: product-service-dapr
+    command: [
+      "./daprd",
+      "-app-id", "product-service",
+      "-app-port", "8081",
+      "-dapr-http-port", "3501",
+      "-dapr-grpc-port", "50002",
+      "-placement-host-address", "dapr-placement:50006",
+      "-components-path", "/components"
+    ]
+    volumes:
+      - ./Infrastructure/dapr/components:/components
+    depends_on:
+      - product-service
+      - dapr-placement
+    network_mode: "service:product-service"
+
+networks:
+  microservices-network:
+    driver: bridge
+
+volumes:
+  grafana-storage: 
