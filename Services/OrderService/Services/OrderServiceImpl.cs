@@ -54,7 +54,7 @@ public class OrderServiceImpl : IOrderService
 			var cacheKey = $"{ORDER_CACHE_KEY}{id}";
 
 			// Try cache first
-			var cachedOrder = await _cache.GetAsync<OrderDto>(cacheKey);
+			var cachedOrder = await _cache.GetOrCreateAsync<OrderDto>(cacheKey, _ => ValueTask.FromResult<OrderDto?>(null), new HybridCacheEntryOptions { Flags = HybridCacheEntryFlags.DisableUnderlyingData | HybridCacheEntryFlags.DisableLocalCacheWrite | HybridCacheEntryFlags.DisableDistributedCacheWrite });
 			if (cachedOrder != null)
 			{
 				_logger.LogInformation("Order {OrderId} retrieved from cache", id);
@@ -75,7 +75,7 @@ public class OrderServiceImpl : IOrderService
 			var orderDto = _mapper.Map<OrderDto>(order);
 
 			// Cache for future requests
-			await _cache.SetAsync(cacheKey, orderDto, TimeSpan.FromMinutes(CACHE_DURATION_MINUTES));
+			await _cache.SetAsync(cacheKey, orderDto, new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(CACHE_DURATION_MINUTES) });
 
 			_logger.LogInformation("Order {OrderId} retrieved from database and cached", id);
 			return orderDto;
@@ -117,7 +117,7 @@ public class OrderServiceImpl : IOrderService
 			var cacheKey = $"{USER_ORDERS_CACHE_KEY}{userId}:{page}:{pageSize}";
 
 			// Try cache first
-			var cachedOrders = await _cache.GetAsync<IEnumerable<OrderDto>>(cacheKey);
+			var cachedOrders = await _cache.GetOrCreateAsync<IEnumerable<OrderDto>>(cacheKey, _ => ValueTask.FromResult<IEnumerable<OrderDto>?>(null), new HybridCacheEntryOptions { Flags = HybridCacheEntryFlags.DisableUnderlyingData | HybridCacheEntryFlags.DisableLocalCacheWrite | HybridCacheEntryFlags.DisableDistributedCacheWrite });
 			if (cachedOrders != null)
 			{
 				_logger.LogInformation("Orders for user {UserId} retrieved from cache", userId);
@@ -135,7 +135,7 @@ public class OrderServiceImpl : IOrderService
 			var orderDtos = _mapper.Map<IEnumerable<OrderDto>>(orders);
 
 			// Cache results
-			await _cache.SetAsync(cacheKey, orderDtos, TimeSpan.FromMinutes(CACHE_DURATION_MINUTES));
+			await _cache.SetAsync(cacheKey, orderDtos, new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(CACHE_DURATION_MINUTES) });
 
 			_logger.LogInformation("Retrieved {Count} orders for user {UserId}", orders.Count, userId);
 			return orderDtos;
@@ -229,8 +229,7 @@ public class OrderServiceImpl : IOrderService
 				{
 					ProductId = item.ProductId,
 					Quantity = item.Quantity,
-					UnitPrice = item.UnitPrice ?? 0, // Will be filled from product service
-					TotalPrice = (item.UnitPrice ?? 0) * item.Quantity
+					UnitPrice = item.UnitPrice // Use as non-nullable decimal
 				}).ToList()
 			};
 
@@ -451,7 +450,7 @@ public class OrderServiceImpl : IOrderService
 			return new
 			{
 				workflowId,
-				runtimeStatus = status?.RuntimeStatus?.ToString(),
+				runtimeStatus = status != null ? status.RuntimeStatus.ToString() : null,
 				createdAt = status?.CreatedAt,
 				lastUpdatedAt = status?.LastUpdatedAt,
 				output = status?.ReadOutputAs<OrderProcessingResult>()
@@ -476,16 +475,19 @@ public class OrderServiceImpl : IOrderService
 				var product = await _productServiceClient.GetProductAsync(item.ProductId);
 				if (product != null)
 				{
-					total += product.Price * item.Quantity;
+					if (item.UnitPrice > 0)
+					{
+						total += item.UnitPrice * item.Quantity;
+					}
 				}
 			}
 			catch (Exception ex)
 			{
 				_logger.LogWarning(ex, "Could not get price for product {ProductId}", item.ProductId);
 				// Use provided unit price if available
-				if (item.UnitPrice.HasValue)
+				if (item.UnitPrice > 0)
 				{
-					total += item.UnitPrice.Value * item.Quantity;
+					total += item.UnitPrice * item.Quantity;
 				}
 			}
 		}

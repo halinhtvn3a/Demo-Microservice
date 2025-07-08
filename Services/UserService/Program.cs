@@ -9,6 +9,8 @@ using System.Reflection;
 using System.Text;
 using UserService.Data;
 using UserService.Services;
+using OpenTelemetry.Instrumentation.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,7 +43,7 @@ builder.Services.AddHybridCache(options =>
 });
 
 // Add JWT Authentication
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your-secret-key-here-must-be-at-least-32-characters-long";
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "key-default-of-the-microservice-demo-(hope-it-works)";
 var key = Encoding.ASCII.GetBytes(jwtSecret);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

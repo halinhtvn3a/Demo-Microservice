@@ -26,8 +26,8 @@ public class OrderMappingProfile : Profile
 
 		CreateMap<CreateOrderItemRequest, OrderItem>()
 			.ForMember(dest => dest.Id, opt => opt.Ignore())
-			.ForMember(dest => dest.UnitPrice, opt => opt.MapFrom(src => src.UnitPrice ?? 0))
-			.ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => (src.UnitPrice ?? 0) * src.Quantity));
+			.ForMember(dest => dest.UnitPrice, opt => opt.MapFrom(src => src.UnitPrice))
+			.ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.UnitPrice * src.Quantity));
 
 		CreateMap<UpdateOrderRequest, Order>()
 			.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))

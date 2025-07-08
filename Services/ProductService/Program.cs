@@ -10,6 +10,9 @@ using System.Text;
 using ProductService.Data;
 using ProductService.Services;
 using ProductService.Mappings;
+using OpenTelemetry.Instrumentation.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Grpc.AspNetCore.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,7 +80,6 @@ builder.Services.AddOpenTelemetry()
 		.AddAspNetCoreInstrumentation()
 		.AddHttpClientInstrumentation()
 		.AddEntityFrameworkCoreInstrumentation()
-		.AddGrpcCoreInstrumentation()
 		.AddSource("ProductService"))
 	.WithMetrics(metrics => metrics
 		.AddAspNetCoreInstrumentation()

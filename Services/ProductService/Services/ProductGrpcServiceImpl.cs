@@ -70,8 +70,8 @@ public class ProductGrpcServiceImpl : ProductGrpcService.ProductGrpcServiceBase
 			{
 				Name = string.IsNullOrEmpty(request.Name) ? null : request.Name,
 				Category = string.IsNullOrEmpty(request.Category) ? null : request.Category,
-				MinPrice = request.MinPrice > 0 ? request.MinPrice : null,
-				MaxPrice = request.MaxPrice > 0 ? request.MaxPrice : null,
+				MinPrice = request.MinPrice > 0 ? (decimal?)request.MinPrice : null,
+				MaxPrice = request.MaxPrice > 0 ? (decimal?)request.MaxPrice : null,
 				InStock = request.InStock ? true : null,
 				Page = request.Page > 0 ? request.Page : 1,
 				PageSize = request.PageSize > 0 ? request.PageSize : 10

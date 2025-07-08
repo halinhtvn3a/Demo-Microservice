@@ -46,6 +46,8 @@ public class CreateOrderItemRequest
 	[Required]
 	[Range(1, int.MaxValue)]
 	public int Quantity { get; set; }
+
+	public decimal UnitPrice { get; set; }
 }
 
 public class UpdateOrderStatusRequest
@@ -62,4 +64,16 @@ public class OrderSearchRequest
 	public DateTime? ToDate { get; set; }
 	public int Page { get; set; } = 1;
 	public int PageSize { get; set; } = 10;
+
+	public decimal? MinAmount { get; set; }
+	public decimal? MaxAmount { get; set; }
+}
+
+public class UpdateOrderRequest
+{
+	[Required]
+	public int Id { get; set; }
+	public string? ShippingAddress { get; set; }
+	public OrderStatus? Status { get; set; }
+	public List<CreateOrderItemRequest>? Items { get; set; }
 }

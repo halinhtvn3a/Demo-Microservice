@@ -42,7 +42,7 @@ public class ProductServiceImpl : IProductService
 			var cacheKey = $"{PRODUCT_CACHE_KEY}{id}";
 
 			// Try cache first
-			var cachedProduct = await _cache.GetAsync<ProductDto>(cacheKey);
+			var cachedProduct = await _cache.GetOrCreateAsync<ProductDto>(cacheKey, _ => ValueTask.FromResult<ProductDto?>(null), new HybridCacheEntryOptions { Flags = HybridCacheEntryFlags.DisableUnderlyingData | HybridCacheEntryFlags.DisableLocalCacheWrite | HybridCacheEntryFlags.DisableDistributedCacheWrite });
 			if (cachedProduct != null)
 			{
 				_logger.LogInformation("Product {ProductId} retrieved from cache", id);
@@ -62,7 +62,7 @@ public class ProductServiceImpl : IProductService
 			var productDto = _mapper.Map<ProductDto>(product);
 
 			// Cache for future requests
-			await _cache.SetAsync(cacheKey, productDto, TimeSpan.FromMinutes(CACHE_DURATION_MINUTES));
+			await _cache.SetAsync(cacheKey, productDto, new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(CACHE_DURATION_MINUTES) });
 
 			_logger.LogInformation("Product {ProductId} retrieved from database and cached", id);
 			return productDto;
@@ -81,7 +81,7 @@ public class ProductServiceImpl : IProductService
 			var cacheKey = $"{PRODUCTS_LIST_CACHE_KEY}{GenerateCacheKey(request)}";
 
 			// Try cache first
-			var cachedProducts = await _cache.GetAsync<IEnumerable<ProductDto>>(cacheKey);
+			var cachedProducts = await _cache.GetOrCreateAsync<IEnumerable<ProductDto>>(cacheKey, _ => ValueTask.FromResult<IEnumerable<ProductDto>?>(null), new HybridCacheEntryOptions { Flags = HybridCacheEntryFlags.DisableUnderlyingData | HybridCacheEntryFlags.DisableLocalCacheWrite | HybridCacheEntryFlags.DisableDistributedCacheWrite });
 			if (cachedProducts != null)
 			{
 				_logger.LogInformation("Products list retrieved from cache");
@@ -126,7 +126,7 @@ public class ProductServiceImpl : IProductService
 			var productDtos = _mapper.Map<IEnumerable<ProductDto>>(products);
 
 			// Cache results
-			await _cache.SetAsync(cacheKey, productDtos, TimeSpan.FromMinutes(CACHE_DURATION_MINUTES));
+			await _cache.SetAsync(cacheKey, productDtos, new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(CACHE_DURATION_MINUTES) });
 
 			_logger.LogInformation("Retrieved {Count} products from database and cached", products.Count);
 			return productDtos;
@@ -151,7 +151,7 @@ public class ProductServiceImpl : IProductService
 
 			// Cache the new product
 			var cacheKey = $"{PRODUCT_CACHE_KEY}{product.Id}";
-			await _cache.SetAsync(cacheKey, productDto, TimeSpan.FromMinutes(CACHE_DURATION_MINUTES));
+			await _cache.SetAsync(cacheKey, productDto, new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(CACHE_DURATION_MINUTES) });
 
 			// Invalidate list cache
 			await InvalidateListCacheAsync();

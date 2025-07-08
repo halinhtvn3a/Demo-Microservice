@@ -2,6 +2,8 @@ using Dapr.Workflow;
 using Shared.Models;
 using Shared.Models.DTOs;
 using Shared.Models.Events;
+using OrderService.Workflows.Activities;
+using Microsoft.Extensions.Logging;
 
 namespace OrderService.Workflows;
 

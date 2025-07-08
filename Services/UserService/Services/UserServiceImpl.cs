@@ -52,7 +52,7 @@ public class UserServiceImpl : IUserService
 				Username = user.Username,
 				Email = user.Email,
 				FullName = user.FullName
-			}, TimeSpan.FromHours(1));
+			}, new HybridCacheEntryOptions { Expiration = TimeSpan.FromHours(1) });
 
 			_logger.LogInformation("User {Username} logged in successfully", user.Username);
 
@@ -123,7 +123,7 @@ public class UserServiceImpl : IUserService
 		try
 		{
 			// Try cache first
-			var cachedUser = await _cache.GetAsync<UserDto>($"user:{id}");
+			var cachedUser = await _cache.GetOrCreateAsync<UserDto>($"user:{id}", _ => ValueTask.FromResult<UserDto?>(null), new HybridCacheEntryOptions { Flags = HybridCacheEntryFlags.DisableUnderlyingData | HybridCacheEntryFlags.DisableLocalCacheWrite | HybridCacheEntryFlags.DisableDistributedCacheWrite });
 			if (cachedUser != null)
 			{
 				return cachedUser;
@@ -144,7 +144,7 @@ public class UserServiceImpl : IUserService
 			};
 
 			// Cache for 1 hour
-			await _cache.SetAsync($"user:{id}", userDto, TimeSpan.FromHours(1));
+			await _cache.SetAsync($"user:{id}", userDto, new HybridCacheEntryOptions { Expiration = TimeSpan.FromHours(1) });
 
 			return userDto;
 		}

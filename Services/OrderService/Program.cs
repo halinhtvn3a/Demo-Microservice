@@ -14,6 +14,9 @@ using OrderService.Mappings;
 using OrderService.Services;
 using OrderService.Workflows;
 using OrderService.Workflows.Activities;
+using OpenTelemetry.Instrumentation.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Dapr.Workflow;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +44,9 @@ builder.Services.AddDaprWorkflow(options =>
 	options.RegisterActivity<ReserveInventoryActivity>();
 	options.RegisterActivity<ProcessPaymentActivity>();
 	options.RegisterActivity<UpdateOrderStatusActivity>();
+	options.RegisterActivity<ReleaseInventoryActivity>();
+	options.RegisterActivity<SendNotificationActivity>();
+	options.RegisterActivity<ProcessShippingActivity>();
 });
 
 // Add Redis and HybridCache

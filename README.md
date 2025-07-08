@@ -1,28 +1,28 @@
 # Microservice Demo Project
 
-Dự án demo microservice hoàn chỉnh sử dụng các công nghệ và xu hướng mới nhất năm 2025, bao gồm ASP.NET Core, Dapr, gRPC, OpenTelemetry, RabbitMQ, Redis, và HybridCache.
+A complete, production-grade microservices demo showcasing the latest technologies in 2025, including ASP.NET Core 8, Dapr, gRPC, OpenTelemetry, RabbitMQ, Redis, and HybridCache.
 
-## 🏗️ Kiến trúc Hệ thống
+## 🏗️ Architecture Overview
 
 ### Microservices
-- **User Service** (Port 8080): Quản lý người dùng, xác thực JWT
-- **Product Service** (Port 8081): Quản lý sản phẩm với gRPC và HybridCache
-- **Order Service** (Port 8082): Xử lý đơn hàng với Dapr Workflow
-- **Notification Service** (Port 8083): Gửi thông báo qua RabbitMQ
+- **User Service** (Port 8080): Manages user accounts and JWT authentication
+- **Product Service** (Port 8081): Manages product catalog using gRPC + HybridCache
+- **Order Service** (Port 8082): 	Handles order processing using Dapr Workflow
+- **Notification Service** (Port 8083): Sends notifications asynchronously via RabbitMQ
 
 ### Infrastructure
-- **Redis** (Port 6379): Cache và State Store
+- **Redis** (Port 6379): Cache and State Store
 - **RabbitMQ** (Port 5672, 15672): Message Queue
 - **Prometheus** (Port 9090): Metrics Collection
 - **Grafana** (Port 3000): Monitoring Dashboard
 - **Dapr**: Service-to-service communication, pub/sub, state management
 
-## 🚀 Công nghệ Sử dụng
+## 🚀 Technology Stack
 
 ### Core Technologies
-- **.NET 8**: Framework chính
+- **.NET 8**: Main Framework 
 - **ASP.NET Core WebAPI**: REST API
-- **Entity Framework Core**: ORM với InMemory Database
+- **Entity Framework Core**: ORM with InMemory Database
 - **AutoMapper**: Object mapping
 
 ### Modern Technologies (2025)
@@ -49,7 +49,7 @@ Dự án demo microservice hoàn chỉnh sử dụng các công nghệ và xu h�
 - **Dapr CLI**
 - **Visual Studio 2022** hoặc **VS Code**
 
-## 🛠️ Cài đặt và Chạy
+## 🛠️ Setup & Run
 
 ### 1. Clone Repository
 ```bash
@@ -57,25 +57,25 @@ git clone <repository-url>
 cd MicroserviceDemo
 ```
 
-### 2. Cài đặt Dapr
+### 2. Install Dapr
 ```bash
-# Cài đặt Dapr CLI
+# Install Dapr CLI
 curl -fsSL https://raw.githubusercontent.com/dapr/cli/master/install/install.sh | /bin/bash
 
-# Khởi tạo Dapr
+# Initialize Dapr
 dapr init
 ```
 
-### 3. Chạy với Docker Compose
+### 3. Run with Docker Compose
 ```bash
-# Build và chạy tất cả services
+# Build and run all services
 docker-compose up --build
 
-# Hoặc chạy trong background
+# or run in background
 docker-compose up -d --build
 ```
 
-### 4. Chạy Local Development (Alternative)
+### 4. Run Local Development (Alternative)
 ```bash
 # Terminal 1: Infrastructure
 docker-compose up redis rabbitmq prometheus grafana
@@ -89,7 +89,7 @@ cd Services/ProductService
 dapr run --app-id product-service --app-port 8081 --dapr-http-port 3501 --components-path ../../Infrastructure/dapr/components -- dotnet run
 ```
 
-## 🧪 Testing và Demo
+## 🧪 Testing and Demo
 
 ### 1. Health Checks
 ```bash
@@ -123,7 +123,7 @@ curl -X POST http://localhost:8080/api/auth/login \
 
 ### 3. Product Management
 ```bash
-# Get products (với JWT token)
+# Get products (with JWT token)
 curl -X GET http://localhost:8081/api/products \
   -H "Authorization: Bearer <your-jwt-token>"
 
@@ -140,7 +140,7 @@ curl -X POST http://localhost:8081/api/products \
   }'
 ```
 
-## 📊 Monitoring và Observability
+## 📊 Monitoring and Observability
 
 ### Swagger/OpenAPI
 - **User Service**: http://localhost:8080
@@ -298,4 +298,4 @@ docker-compose logs product-service-dapr
 
 ---
 
-**Demo này thể hiện việc ứng dụng các công nghệ microservice hiện đại nhất trong thực tế, phù hợp cho việc học tập và phát triển production-ready applications.** 
+**This demo demonstrates the application of the most modern microservice technologies in practice, suitable for learning and developing production-ready applications.** 
