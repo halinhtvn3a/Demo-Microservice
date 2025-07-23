@@ -20,10 +20,9 @@ public class ProcessPaymentActivity : WorkflowActivity<OrderProcessingInput, boo
 				input.OrderId, input.TotalAmount);
 
 			// Simulate payment processing
-			await Task.Delay(2000); // Simulate external payment gateway call
+			await Task.Delay(2000);
 
-			// For demo purposes, randomly succeed/fail based on amount
-			var success = input.TotalAmount < 5000; // Orders over $5000 may fail
+			var success = input.TotalAmount < 5000;
 
 			if (success)
 			{

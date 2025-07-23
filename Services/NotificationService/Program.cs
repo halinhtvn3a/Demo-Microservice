@@ -10,16 +10,12 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add ServiceDefaults (includes OpenTelemetry, health checks, service discovery)
 builder.AddServiceDefaults();
 
-// Add services to the container.
 builder.Services.AddControllers().AddDapr();
 
-// Add Entity Framework with SQL Server (Aspire will configure connection)
 builder.AddSqlServerDbContext<NotificationDbContext>("NotificationDb");
 
-// Add Redis and HybridCache (Connection will be configured by Aspire)
 builder.Services.AddStackExchangeRedisCache(options =>
 {
 	options.Configuration = builder.Configuration.GetConnectionString("redis") ?? "localhost:6379";
@@ -105,21 +101,18 @@ builder.Services.AddHostedService<NotificationProcessorService>();
 
 var app = builder.Build();
 
-// Map default endpoints (health checks, etc.)
 app.MapDefaultEndpoints();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
 	app.UseSwagger();
 	app.UseSwaggerUI(c =>
 	{
 		c.SwaggerEndpoint("/swagger/v1/swagger.json", "Notification Service API V1");
-		c.RoutePrefix = string.Empty; // Serve Swagger UI at root
+		c.RoutePrefix = string.Empty;
 	});
 }
 
-// Initialize database
 using (var scope = app.Services.CreateScope())
 {
 	var context = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();

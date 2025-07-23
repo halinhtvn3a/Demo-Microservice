@@ -22,7 +22,7 @@ public class SendNotificationActivity : WorkflowActivity<NotificationInput, bool
 			_logger.LogInformation("Sending notification '{Type}' for order {OrderId} to user {UserId}",
 				input.Type, input.OrderId, input.UserId);
 
-			// Publish an event to the 'pubsub' component so the NotificationService can handle it
+
 			var topicName = "order.notifications";
 			await _daprClient.PublishEventAsync("pubsub", topicName, input);
 

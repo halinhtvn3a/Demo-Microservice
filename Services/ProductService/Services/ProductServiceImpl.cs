@@ -116,7 +116,7 @@ public class ProductServiceImpl : IProductService
 				query = query.Where(p => p.Stock > 0);
 			}
 
-			// Apply pagination
+			// Pagination
 			var products = await query
 				.OrderBy(p => p.Name)
 				.Skip((request.Page - 1) * request.PageSize)
@@ -222,7 +222,6 @@ public class ProductServiceImpl : IProductService
 				return false;
 			}
 
-			// Soft delete
 			product.IsActive = false;
 			product.UpdatedAt = DateTime.UtcNow;
 

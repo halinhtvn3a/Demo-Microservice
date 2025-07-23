@@ -7,16 +7,9 @@ spec:
   version: v1
   metadata:
   - name: redisHost
-    value: localhost:6379
+    value: "localhost:57998"
   - name: redisPassword
     value: ""
-  - name: enableTLS
-    value: "false"
-  - name: failover
-    value: "false"
-  - name: sentinelMasterName
-    value: ""
-  - name: maxRetries
-    value: "3"
-  - name: maxRetryBackoff
-    value: "2s" 
+  - name: actorStateStore
+    value: "true" 
+

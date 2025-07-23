@@ -34,11 +34,6 @@ public class ProductsController : ControllerBase
 		return Ok(products);
 	}
 
-	/// <summary>
-	/// Get product by ID
-	/// </summary>
-	/// <param name="id">Product ID</param>
-	/// <returns>Product details</returns>
 	[HttpGet("{id}")]
 	[AllowAnonymous]
 	[ProducesResponseType(typeof(ProductDto), 200)]
@@ -54,11 +49,6 @@ public class ProductsController : ControllerBase
 		return Ok(product);
 	}
 
-	/// <summary>
-	/// Create a new product
-	/// </summary>
-	/// <param name="request">Product creation details</param>
-	/// <returns>Created product</returns>
 	[HttpPost]
 	[ProducesResponseType(typeof(ProductDto), 201)]
 	[ProducesResponseType(400)]
@@ -80,12 +70,6 @@ public class ProductsController : ControllerBase
 		return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
 	}
 
-	/// <summary>
-	/// Update an existing product
-	/// </summary>
-	/// <param name="id">Product ID</param>
-	/// <param name="request">Product update details</param>
-	/// <returns>Updated product</returns>
 	[HttpPut("{id}")]
 	[ProducesResponseType(typeof(ProductDto), 200)]
 	[ProducesResponseType(400)]
@@ -108,11 +92,7 @@ public class ProductsController : ControllerBase
 		return Ok(product);
 	}
 
-	/// <summary>
-	/// Delete a product (soft delete)
-	/// </summary>
-	/// <param name="id">Product ID</param>
-	/// <returns>Success status</returns>
+	
 	[HttpDelete("{id}")]
 	[ProducesResponseType(204)]
 	[ProducesResponseType(401)]
@@ -129,12 +109,7 @@ public class ProductsController : ControllerBase
 		return NoContent();
 	}
 
-	/// <summary>
-	/// Check product stock availability
-	/// </summary>
-	/// <param name="id">Product ID</param>
-	/// <param name="quantity">Required quantity</param>
-	/// <returns>Stock availability status</returns>
+	
 	[HttpGet("{id}/stock/check")]
 	[ProducesResponseType(typeof(object), 200)]
 	[ProducesResponseType(404)]
@@ -153,12 +128,7 @@ public class ProductsController : ControllerBase
 		});
 	}
 
-	/// <summary>
-	/// Update product stock
-	/// </summary>
-	/// <param name="id">Product ID</param>
-	/// <param name="quantityChange">Quantity change (positive to add, negative to subtract)</param>
-	/// <returns>Updated stock information</returns>
+	
 	[HttpPatch("{id}/stock")]
 	[ProducesResponseType(typeof(object), 200)]
 	[ProducesResponseType(400)]
@@ -186,10 +156,7 @@ public class ProductsController : ControllerBase
 		});
 	}
 
-	/// <summary>
-	/// Health check endpoint
-	/// </summary>
-	/// <returns>Health status</returns>
+	
 	[HttpGet("health")]
 	[AllowAnonymous]
 	[ProducesResponseType(typeof(object), 200)]

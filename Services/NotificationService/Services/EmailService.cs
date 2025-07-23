@@ -48,12 +48,10 @@ public class EmailService : IEmailService
 			_logger.LogInformation("EMAIL SENT:\nTo: {To}\nSubject: {Subject}\nBody: {Body}",
 				to, subject, htmlBody);
 
-			// Simulate sending delay
 			await Task.Delay(100);
 
-			// Simulate occasional failures for demo
 			var random = new Random();
-			if (random.Next(1, 101) <= 5) // 5% failure rate
+			if (random.Next(1, 101) <= 5)
 			{
 				_logger.LogWarning("Simulated email sending failure for: {Email}", to);
 				return false;
@@ -87,7 +85,6 @@ public class EmailService : IEmailService
 
 		try
 		{
-			// Simple email validation regex
 			var emailRegex = new Regex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
 			return emailRegex.IsMatch(email);
 		}

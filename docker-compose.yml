@@ -2,6 +2,18 @@ version: '3.8'
 
 services:
   # Infrastructure Services
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    networks:
+      - microservices-network
+
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -135,6 +147,83 @@ services:
       - product-service
       - dapr-placement
     network_mode: "service:product-service"
+
+  order-service:
+    build:
+      context: .
+      dockerfile: Services/OrderService/Dockerfile
+    container_name: order-service
+    ports:
+      - "8082:8082"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8082
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Secret=your-secret-key-here-must-be-at-least-32-characters-long
+    depends_on:
+      - redis
+      - dapr-placement
+      - user-service
+      - product-service
+    networks:
+      - microservices-network
+
+  order-service-dapr:
+    image: daprio/daprd:1.13.0
+    container_name: order-service-dapr
+    command: [
+      "./daprd",
+      "-app-id", "order-service",
+      "-app-port", "8082",
+      "-dapr-http-port", "3502",
+      "-dapr-grpc-port", "50003",
+      "-placement-host-address", "dapr-placement:50006",
+      "-components-path", "/components"
+    ]
+    volumes:
+      - ./Infrastructure/dapr/components:/components
+    depends_on:
+      - order-service
+      - dapr-placement
+    network_mode: "service:order-service"
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Services/NotificationService/Dockerfile
+    container_name: notification-service
+    ports:
+      - "8083:8083"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8083
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Secret=your-secret-key-here-must-be-at-least-32-characters-long
+    depends_on:
+      - redis
+      - dapr-placement
+      - rabbitmq
+    networks:
+      - microservices-network
+
+  notification-service-dapr:
+    image: daprio/daprd:1.13.0
+    container_name: notification-service-dapr
+    command: [
+      "./daprd",
+      "-app-id", "notification-service",
+      "-app-port", "8083",
+      "-dapr-http-port", "3503",
+      "-dapr-grpc-port", "50004",
+      "-placement-host-address", "dapr-placement:50006",
+      "-components-path", "/components"
+    ]
+    volumes:
+      - ./Infrastructure/dapr/components:/components
+    depends_on:
+      - notification-service
+      - dapr-placement
+    network_mode: "service:notification-service"
 
 networks:
   microservices-network:
