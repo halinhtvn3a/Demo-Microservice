@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Shared.Models;
 using Shared.Models.DTOs;
-using Shared.Models.Events;
 using ProductService.Data;
+using Shared.Messaging;
+using Shared.Events;
 
 namespace ProductService.Services;
 
@@ -14,7 +15,7 @@ public class ProductServiceImpl : IProductService
     private readonly ProductDbContext _context;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
-    // private readonly DaprClient _daprClient; // Removed Dapr dependency
+    private readonly IMessagePublisher _messagePublisher;
     private readonly ILogger<ProductServiceImpl> _logger;
 
     private const string PRODUCT_CACHE_KEY = "product:";
@@ -25,13 +26,13 @@ public class ProductServiceImpl : IProductService
         ProductDbContext context,
         IMapper mapper,
         HybridCache cache,
-        // DaprClient daprClient, // Removed Dapr dependency
+        IMessagePublisher messagePublisher,
         ILogger<ProductServiceImpl> logger)
     {
         _context = context;
         _mapper = mapper;
         _cache = cache;
-        // _daprClient = daprClient; // Removed Dapr dependency
+        _messagePublisher = messagePublisher;
         _logger = logger;
     }
 
@@ -359,11 +360,16 @@ public class ProductServiceImpl : IProductService
     {
         try
         {
-            var stockEvent = _mapper.Map<ProductStockUpdatedEvent>(product);
-            stockEvent.OldStock = oldStock;
-            stockEvent.NewStock = newStock;
+            // Create and publish ProductStockUpdatedEvent
+            var stockUpdatedEvent = new ProductStockUpdatedEvent(
+                product.Id,
+                product.Name,
+                oldStock,
+                newStock,
+                DateTime.UtcNow
+            );
 
-            // await _daprClient.PublishEventAsync("pubsub", "product-stock-updated", stockEvent); // TODO: Replace with RabbitMQ messaging
+            await _messagePublisher.PublishAsync("product.stock-updated", stockUpdatedEvent);
 
             _logger.LogInformation("Published stock updated event for product {ProductId}", product.Id);
         }

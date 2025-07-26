@@ -8,7 +8,6 @@ using OrderService.Data;
 // using OrderService.Workflows; // Removed Dapr workflow dependency
 using Shared.Models;
 using Shared.Models.DTOs;
-using Shared.Models.Events;
 using Shared.Messaging;
 using Shared.Events;
 
@@ -238,14 +237,13 @@ public class OrderServiceImpl : IOrderService
             var orderDto = _mapper.Map<OrderDto>(order);
 
             // Publish order created event
-            var orderCreatedEvent = new OrderCreatedEvent
-            {
-                OrderId = order.Id,
-                OrderNumber = order.OrderNumber,
-                UserId = order.UserId,
-                TotalAmount = order.TotalAmount,
-                CreatedAt = order.CreatedAt
-            };
+            var orderCreatedEvent = new OrderCreatedEvent(
+                order.Id,
+                order.UserId,
+                order.TotalAmount,
+                order.Items.Select(i => new OrderItemEvent(i.ProductId, i.Quantity, i.UnitPrice)).ToList(),
+                order.CreatedAt
+            );
 
             // Publish OrderCreatedEvent via RabbitMQ
             await _messagePublisher.PublishAsync("order.created", orderCreatedEvent);
@@ -287,16 +285,15 @@ public class OrderServiceImpl : IOrderService
             await _context.SaveChangesAsync();
 
             // Publish status updated event
-            var statusUpdatedEvent = new OrderStatusUpdatedEvent
-            {
-                OrderId = order.Id,
-                OrderNumber = order.OrderNumber,
-                OldStatus = oldStatus,
-                NewStatus = status,
-                UpdatedAt = DateTime.UtcNow
-            };
+            var statusUpdatedEvent = new OrderStatusChangedEvent(
+                order.Id,
+                oldStatus.ToString(),
+                status.ToString(),
+                DateTime.UtcNow
+            );
 
-            // await _daprClient.PublishEventAsync("pubsub", "order-status-updated", statusUpdatedEvent); // TODO: Replace with RabbitMQ messaging
+            // Publish OrderStatusChangedEvent via RabbitMQ
+            await _messagePublisher.PublishAsync("order.status-changed", statusUpdatedEvent);
 
             // Invalidate cache
             await InvalidateOrderCacheAsync(id);
@@ -337,16 +334,15 @@ public class OrderServiceImpl : IOrderService
             await _context.SaveChangesAsync();
 
             // Publish cancellation event
-            var cancelledEvent = new OrderCancelledEvent
-            {
-                OrderId = order.Id,
-                OrderNumber = order.OrderNumber,
-                UserId = order.UserId,
-                Reason = reason,
-                CancelledAt = DateTime.UtcNow
-            };
+            var cancelledEvent = new OrderCancelledEvent(
+                order.Id,
+                order.UserId,
+                reason,
+                DateTime.UtcNow
+            );
 
-            // await _daprClient.PublishEventAsync("pubsub", "order-cancelled", cancelledEvent); // TODO: Replace with RabbitMQ messaging
+            // Publish OrderCancelledEvent via RabbitMQ
+            await _messagePublisher.PublishAsync("order.cancelled", cancelledEvent);
 
             // Invalidate cache
             await InvalidateOrderCacheAsync(id);

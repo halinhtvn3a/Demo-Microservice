@@ -25,3 +25,11 @@ public record PasswordResetRequestedEvent(
     string ResetToken,
     DateTime RequestedAt
 );
+
+public record ProductStockUpdatedEvent(
+    int ProductId,
+    string ProductName,
+    int OldStock,
+    int NewStock,
+    DateTime UpdatedAt
+);

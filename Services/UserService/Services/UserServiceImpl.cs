@@ -7,6 +7,8 @@ using System.Text;
 using Shared.Models;
 using Shared.Models.DTOs;
 using UserService.Data;
+using Shared.Messaging;
+using Shared.Events;
 
 namespace UserService.Services;
 
@@ -15,17 +17,20 @@ public class UserServiceImpl : IUserService
     private readonly UserDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly HybridCache _cache;
+    private readonly IMessagePublisher _messagePublisher;
     private readonly ILogger<UserServiceImpl> _logger;
 
     public UserServiceImpl(
         UserDbContext context,
         IConfiguration configuration,
         HybridCache cache,
+        IMessagePublisher messagePublisher,
         ILogger<UserServiceImpl> logger)
     {
         _context = context;
         _configuration = configuration;
         _cache = cache;
+        _messagePublisher = messagePublisher;
         _logger = logger;
     }
 
@@ -100,6 +105,16 @@ public class UserServiceImpl : IUserService
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+
+            // Publish user registered event
+            var userRegisteredEvent = new UserRegisteredEvent(
+                user.Id,
+                user.Email,
+                user.FullName,
+                user.CreatedAt
+            );
+
+            await _messagePublisher.PublishAsync("user.registered", userRegisteredEvent);
 
             _logger.LogInformation("User {Username} registered successfully", user.Username);
 

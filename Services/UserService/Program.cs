@@ -8,6 +8,7 @@ using UserService.Data;
 using UserService.Services;
 using Shared.Messaging;
 using Shared.Auth;
+using Shared.Events;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 var builder = WebApplication.CreateBuilder(args);
