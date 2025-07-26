@@ -7,9 +7,8 @@ spec:
   version: v1
   metadata:
   - name: redisHost
-    value: "{ConnectionStrings__redis}"
+    value: "localhost:57481"
   - name: redisPassword
     value: ""
   - name: actorStateStore
-    value: "true" 
-
+    value: "true"

@@ -12,11 +12,11 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
     <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
-    <PackageReference Include="Dapr.AspNetCore" Version="1.13.0" />
-    <PackageReference Include="Dapr.Extensions.Configuration" Version="1.13.0" />
+
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.6.0" />
     <PackageReference Include="Aspire.StackExchange.Redis" Version="9.0.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageReference Include="AutoMapper" Version="12.0.1" />
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
     <PackageReference Include="MailKit" Version="4.13.0" />
@@ -26,6 +26,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Shared.Models\Shared.Models.csproj" />
+    <ProjectReference Include="..\..\Shared\Shared.Messaging\Shared.Messaging.csproj" />
+    <ProjectReference Include="..\..\Shared\Shared.Events\Shared.Events.csproj" />
+    <ProjectReference Include="..\..\Shared\Shared.Auth\Shared.Auth.csproj" />
     <ProjectReference Include="..\MicroserviceDemo.ServiceDefaults\MicroserviceDemo.ServiceDefaults.csproj" />
   </ItemGroup>
 

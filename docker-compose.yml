@@ -104,6 +104,8 @@ services:
       "-placement-host-address", "dapr-placement:50006",
       "-components-path", "/components"
     ]
+    environment:
+      - RABBITMQ_HOST=rabbitmq
     volumes:
       - ./Infrastructure/dapr/components:/components
     depends_on:
@@ -141,6 +143,8 @@ services:
       "-placement-host-address", "dapr-placement:50006",
       "-components-path", "/components"
     ]
+    environment:
+      - RABBITMQ_HOST=rabbitmq
     volumes:
       - ./Infrastructure/dapr/components:/components
     depends_on:
@@ -180,6 +184,8 @@ services:
       "-placement-host-address", "dapr-placement:50006",
       "-components-path", "/components"
     ]
+    environment:
+      - RABBITMQ_HOST=rabbitmq
     volumes:
       - ./Infrastructure/dapr/components:/components
     depends_on:
@@ -218,6 +224,8 @@ services:
       "-placement-host-address", "dapr-placement:50006",
       "-components-path", "/components"
     ]
+    environment:
+      - RABBITMQ_HOST=rabbitmq
     volumes:
       - ./Infrastructure/dapr/components:/components
     depends_on:
@@ -230,4 +238,4 @@ networks:
     driver: bridge
 
 volumes:
-  grafana-storage: 
+  grafana-storage:
