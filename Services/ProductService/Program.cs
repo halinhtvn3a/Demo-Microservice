@@ -15,6 +15,15 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel for gRPC (HTTP/2 required)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ConfigureEndpointDefaults(listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+    });
+});
+
 // Add ServiceDefaults (includes OpenTelemetry, health checks, service discovery)
 builder.AddServiceDefaults();
 

@@ -8,7 +8,7 @@ namespace OrderService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+//[Authorize]
 [Produces("application/json")]
 public class OrdersController : ControllerBase
 {

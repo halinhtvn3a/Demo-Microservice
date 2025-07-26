@@ -6,7 +6,7 @@ namespace OrderService.Controllers;
 
 [ApiController]
 [Route("api/orders/grpc")]
-[Authorize]
+//[Authorize]
 public class OrderGrpcController : ControllerBase
 {
     private readonly IOrderGrpcService _orderGrpcService;

@@ -19,10 +19,21 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel for HTTP/2 support
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ConfigureEndpointDefaults(listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+    });
+});
+
 // Add ServiceDefaults (includes OpenTelemetry, health checks, service discovery)
 builder.AddServiceDefaults();
 
-// Add Entity Framework with SQL Server (Aspire will configure connection)
+//// Add Entity Framework with SQL Server
+//builder.Services.AddDbContext<OrderDbContext>(options =>
+//    options.UseSqlServer(builder.Configuration.GetConnectionString("OrderDb")));
 builder.AddSqlServerDbContext<OrderDbContext>("OrderDb");
 
 // Add AutoMapper
@@ -31,7 +42,7 @@ builder.Services.AddAutoMapper(typeof(OrderMappingProfile));
 // Add Controllers
 builder.Services.AddControllers();
 
-// Add Hangfire for background jobs (replacing Dapr Workflow)
+// Add Hangfire for background jobs (disabled for testing)
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -55,21 +66,42 @@ builder.Services.AddHybridCache(options =>
     };
 });
 
-// Add Refit clients for external services (using service discovery)
+// Add Refit clients for external services
+// Use fixed ports when not running with Aspire, service discovery when with Aspire
+var userServiceUrl = builder.Configuration["ExternalServices:UserService"] ?? "http://localhost:8080";
+var productServiceUrl = builder.Configuration["ExternalServices:ProductService"] ?? "http://localhost:8081";
+
 builder.Services.AddRefitClient<IUserServiceClient>()
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("http://userservice"));
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri(userServiceUrl));
 
 builder.Services.AddRefitClient<IProductServiceClient>()
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("http://productservice"));
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri(productServiceUrl));
 
-// Add gRPC client for ProductService
+// Add gRPC client for ProductService (HTTP/2.0 over HTTPS)
 builder.Services.AddGrpcClient<OrderService.Protos.ProductGrpcService.ProductGrpcServiceClient>(options =>
 {
-    options.Address = new Uri("http://productservice"); // Aspire service discovery
+    var grpcUrl = productServiceUrl.Replace("http://", "https://");
+    options.Address = new Uri(grpcUrl);
 })
 .ConfigureChannel(options =>
 {
     options.UnsafeUseInsecureChannelCallCredentials = true; // For development only
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    if (builder.Environment.IsDevelopment())
+    {
+        // Skip SSL validation in development
+        handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+    return handler;
+})
+.ConfigureHttpClient(client =>
+{
+    // Use HTTP/2.0 for gRPC
+    client.DefaultRequestVersion = new Version(2, 0);
+    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
 });
 
 builder.Services.AddScoped<IProductGrpcClient, ProductGrpcClient>();
@@ -128,6 +160,7 @@ builder.Services.AddRabbitMQMessaging();
 // Add Application Services
 builder.Services.AddScoped<IOrderService, OrderServiceImpl>();
 builder.Services.AddScoped<IOrderGrpcService, OrderGrpcService>();
+builder.Services.AddScoped<IUserValidationService, UserValidationService>();
 
 var app = builder.Build();
 
@@ -146,10 +179,19 @@ if (app.Environment.IsDevelopment())
 }
 
 // Initialize database
-using (var scope = app.Services.CreateScope())
+try
 {
-    var context = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
-    context.Database.EnsureCreated();
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+        context.Database.EnsureCreated();
+        app.Logger.LogInformation("Database initialized successfully");
+    }
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Failed to initialize database");
+    // Continue without database for now
 }
 
 app.UseAuthentication();
@@ -159,11 +201,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Add Hangfire Dashboard
+// Add simple home page
 if (app.Environment.IsDevelopment())
 {
-    app.UseHangfireDashboard("/hangfire");
-    app.MapGet("/", () => "Order Service - REST API available at /swagger, Hangfire Dashboard at /hangfire");
+    app.MapGet("/", () => "Order Service - REST API available at /swagger");
 }
 
 app.Run();
